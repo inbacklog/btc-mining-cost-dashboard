@@ -15,6 +15,10 @@ This project is intended for research and education. It is not financial advice.
 - Historical accumulation-opportunity score for context.
 - Date-window controls that keep charts aligned and readable.
 
+<img width="1392" height="626" alt="image" src="https://github.com/user-attachments/assets/c1cc5143-4600-40cf-901b-d435845d202b" />
+
+<img width="1560" height="527" alt="image" src="https://github.com/user-attachments/assets/6086e5b0-63c3-4f69-b302-8eafad7a3b26" />
+
 ## Quick Start
 
 ```powershell
