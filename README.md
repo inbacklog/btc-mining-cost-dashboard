@@ -4,16 +4,6 @@ A Streamlit dashboard for comparing BTC market price with an estimated mining pr
 
 This project is intended for research and education. It is not financial advice.
 
-## Preview
-
-Add screenshots to `assets/screenshots/` and reference them here:
-
-```md
-![Main dashboard](assets/screenshots/main-dashboard.png)
-![Opportunity score](assets/screenshots/opportunity-score.png)
-![Cost comparison](assets/screenshots/cost-comparison.png)
-```
-
 ## Features
 
 - BTC price history from Yahoo Finance or Binance spot data.
