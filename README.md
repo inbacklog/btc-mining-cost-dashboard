@@ -40,7 +40,9 @@ streamlit run app.py --server.port 8502
 
 ## Windows Executable
 
-You can build a local Windows executable that starts the dashboard with a double click:
+Windows users can download the executable from the repository's **Releases** page when a release is available.
+
+Developers can rebuild the executable locally with:
 
 ```powershell
 .\build_exe.ps1
@@ -66,36 +68,6 @@ There is no official BTC production-cost series. Treat every output as assumptio
 - Mining metrics: Coin Metrics Community API / CSV.
 - Fallback network metrics: Blockchain.com charts.
 
-## Public Repo Setup
-
-1. Create a new empty public repository on GitHub.
-2. Keep it empty: do not initialize it with a README, `.gitignore`, or license if you want a simple first push from this folder.
-3. From this project folder, run the commands in the "GitHub Upload" section below.
-
-## GitHub Upload
-
-Replace `YOUR_USERNAME` and `YOUR_REPO` with your GitHub account and repository name:
-
-```powershell
-git init
-git add .
-git commit -m "Initial public release"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
-git push -u origin main
-```
-
-If the remote repository already has files, use this safer flow instead:
-
-```powershell
-git init
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
-git pull origin main --allow-unrelated-histories
-git add .
-git commit -m "Initial public release"
-git push -u origin main
-```
-
 ## License
 
-Choose a license before publishing. MIT is a common choice for small open-source dashboard projects.
+No license has been selected yet.
