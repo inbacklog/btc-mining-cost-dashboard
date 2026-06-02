@@ -967,7 +967,7 @@ def describe_latest_rsi(price: pd.DataFrame) -> str:
     return f"Latest RSI is {rsi:.1f}, which is {zone}.{direction}"
 
 
-def render_manual() -> None:
+def render_manual(cost: pd.DataFrame, latest_ratio: float | None) -> None:
     st.divider()
     st.header("📘 Dashboard manual: how to use and interpret the app")
     st.caption("This section is a practical guide for reading the dashboard. It is educational, not financial advice.")
@@ -1090,6 +1090,55 @@ A practical reading:
 - Opportunity score summarizes context but should not override your risk management.
 """
         )
+
+    with st.expander("7. Model details and latest raw data", expanded=False):
+        st.markdown(
+            """
+**How the cost lines are calculated**
+
+Most public BTC production-cost charts usually show BTC price versus one or two production-cost lines. This app follows that simpler structure, using Coin Metrics daily mining metrics when available:
+
+1. **Electrical cost floor**  
+   `network hash rate x fleet efficiency x electricity price / BTC miner revenue`
+
+2. **Total production cost**  
+   `electrical cost floor / electricity share of total production cost`
+
+3. **Miner revenue price**  
+   `BTC spot price x (BTC subsidy + transaction fees) / BTC subsidy`
+
+**Important assumptions**
+
+- There is no single official BTC production cost.
+- Coin Metrics HashRate is used in TH/s for BTC; daily fees and issuance are in BTC units.
+- The historical fleet-efficiency curve is approximate.
+- `Electricity share of total production cost = 60%` means total cost is estimated as `electricity cost / 0.60`.
+- The calibration option lets you manually align the latest model value to an external reference, for example a MacroMicro-style current production-cost estimate.
+"""
+        )
+
+        if latest_ratio is None or not np.isfinite(latest_ratio):
+            st.info("Price / cost ratio is unavailable because mining-cost data did not load.")
+        elif latest_ratio > 1:
+            st.success(f"BTC price is above estimated total production cost by about {latest_ratio:.2f}x under the selected assumptions.")
+        else:
+            st.warning(f"BTC price is below estimated total production cost under the selected assumptions. Ratio: {latest_ratio:.2f}x.")
+
+        curve_df = pd.DataFrame(EFFICIENCY_CURVE_J_PER_TH, columns=["date", "efficiency_j_per_th"])
+        st.caption("Approximate historical fleet-efficiency curve used by the default model.")
+        st.dataframe(curve_df, use_container_width=True, hide_index=True)
+
+        st.caption("Latest raw mining-cost rows.")
+        if not cost.empty:
+            display_cols = [
+                "time", "mining_source", "hashrate_reported", "hashrate_unit_inferred", "hashrate_th_s", "efficiency_j_per_th",
+                "btc_issued_per_day", "fees_btc", "electricity_cost_per_btc", "total_production_cost_per_btc",
+                "btc_price_for_cost", "miner_price_per_btc", "price_to_total_cost", "calibration_factor",
+            ]
+            available_cols = [c for c in display_cols if c in cost.columns]
+            st.dataframe(cost[available_cols].tail(20), use_container_width=True, hide_index=True)
+        else:
+            st.write("No cost data available.")
 
 def main():
     st.set_page_config(page_title="BTC price vs mining cost", layout="wide")
@@ -1288,57 +1337,7 @@ def main():
         fig_cost = make_cost_comparison_chart(cost_display, symbol, currency_symbol, use_log_cost_chart, x_range=synced_x_range)
         st.plotly_chart(fig_cost, use_container_width=True)
 
-    with st.expander("How the cost lines are calculated"):
-        st.markdown(
-            """
-**What other public charts usually do**
-
-Most public BTC production-cost charts do not show many hardware/ops lines on the main price chart. They usually show BTC price versus one or two production-cost lines.
-
-This app follows that simpler structure, using Coin Metrics daily mining metrics when available:
-
-1. **Electrical cost floor**  
-   `network hash rate × fleet efficiency × electricity price / BTC miner revenue`
-
-2. **Total production cost**  
-   `electrical cost floor / electricity share of total production cost`
-
-3. **Miner revenue price**  
-   `BTC spot price × (BTC subsidy + transaction fees) / BTC subsidy`
-
-**Important assumptions**
-
-- There is no single official BTC production cost.
-- Coin Metrics HashRate is used in TH/s for BTC; daily fees and issuance are in BTC units.
-- The historical fleet-efficiency curve is approximate.
-- `Electricity share of total production cost = 60%` means total cost is estimated as `electricity cost / 0.60`.
-- The calibration option lets you manually align the latest model value to an external reference, for example a MacroMicro-style current production-cost estimate.
-"""
-        )
-        curve_df = pd.DataFrame(EFFICIENCY_CURVE_J_PER_TH, columns=["date", "efficiency_j_per_th"])
-        st.dataframe(curve_df, use_container_width=True, hide_index=True)
-
-    with st.expander("Latest data rows"):
-        if not cost.empty:
-            display_cols = [
-                "time", "mining_source", "hashrate_reported", "hashrate_unit_inferred", "hashrate_th_s", "efficiency_j_per_th",
-                "btc_issued_per_day", "fees_btc", "electricity_cost_per_btc", "total_production_cost_per_btc",
-                "btc_price_for_cost", "miner_price_per_btc", "price_to_total_cost", "calibration_factor",
-            ]
-            available_cols = [c for c in display_cols if c in cost.columns]
-            st.dataframe(cost[available_cols].tail(20), use_container_width=True, hide_index=True)
-        else:
-            st.write("No cost data available.")
-
-    with st.expander("Practical interpretation"):
-        if latest_ratio is None or not np.isfinite(latest_ratio):
-            st.write("Ratio unavailable because mining-cost data did not load.")
-        elif latest_ratio > 1:
-            st.success(f"BTC price is above estimated total production cost by about {latest_ratio:.2f}x under the selected assumptions.")
-        else:
-            st.warning(f"BTC price is below estimated total production cost under the selected assumptions. Ratio: {latest_ratio:.2f}x.")
-
-    render_manual()
+    render_manual(cost, latest_ratio)
 
 
 if __name__ == "__main__":
