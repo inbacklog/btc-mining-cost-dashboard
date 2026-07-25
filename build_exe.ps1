@@ -18,6 +18,7 @@ $PyInstallerArgs = @(
     "--onefile",
     "--name", "BTC-Mining-Cost-Dashboard",
     "--add-data", "app.py;.",
+    "--add-data", "assets;assets",
     "--collect-all", "streamlit",
     "--collect-all", "streamlit_autorefresh",
     "--collect-all", "plotly",

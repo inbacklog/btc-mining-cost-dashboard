@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
@@ -18,6 +19,12 @@ BINANCE_BASE_URL = "https://api.binance.com"
 BLOCKCHAIN_CHARTS_URL = "https://api.blockchain.info/charts"
 COINMETRICS_API_URL = "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
 COINMETRICS_BTC_CSV_URL = "https://raw.githubusercontent.com/coinmetrics/data/master/csv/btc.csv"
+BUY_ME_A_COFFEE_URL = "https://buymeacoffee.com/inbacklog"
+LIGHTNING_ADDRESS = "doableshrimp862@walletofsatoshi.com"
+ASSETS_DIR = Path(__file__).resolve().parent / "assets"
+SUPPORT_ASSETS_DIR = ASSETS_DIR / "support"
+BUY_ME_A_COFFEE_QR = SUPPORT_ASSETS_DIR / "buymeacoffee-qr.png"
+LIGHTNING_QR = SUPPORT_ASSETS_DIR / "lightning-qr.png"
 
 INTERVAL_TO_MS: Dict[str, int] = {
     "1m": 60_000,
@@ -517,6 +524,20 @@ def fmt_ratio(x: float | None) -> str:
         return "n/a"
     return f"{x:.2f}x"
 
+
+def render_support_box() -> None:
+    with st.expander("Support this project", expanded=False):
+        st.caption("Optional support if this dashboard is useful to you.")
+        st.markdown("**1. Buy Me a Coffee**")
+        st.link_button("Buy Me a Coffee", BUY_ME_A_COFFEE_URL, use_container_width=True)
+        if BUY_ME_A_COFFEE_QR.exists():
+            st.image(str(BUY_ME_A_COFFEE_QR), caption="Buy Me a Coffee QR", use_container_width=True)
+
+        st.divider()
+        st.markdown("**2. Bitcoin Lightning / Wallet of Satoshi**")
+        st.code(LIGHTNING_ADDRESS)
+        if LIGHTNING_QR.exists():
+            st.image(str(LIGHTNING_QR), caption="Lightning QR", use_container_width=True)
 
 
 
@@ -1209,6 +1230,8 @@ def main():
         include_fees = st.checkbox("Include transaction fees as miner BTC revenue", value=True)
         calibrate = st.checkbox("Calibrate current total cost to external reference", value=False)
         target_cost = st.number_input("Current reference total production cost", min_value=1000.0, max_value=300000.0, value=85000.0, step=1000.0)
+        st.divider()
+        render_support_box()
 
     # Price data
     try:
