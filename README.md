@@ -2,6 +2,8 @@
 
 A Streamlit dashboard for comparing BTC market price with an estimated mining production-cost model. It combines price history, moving averages, RSI, volume, network mining metrics, cost assumptions, and a historical accumulation-opportunity score.
 
+**Project website:** [inbacklog.github.io/btc-mining-cost-dashboard](https://inbacklog.github.io/btc-mining-cost-dashboard/)
+
 This project is intended for research and education. It is not financial advice.
 
 ## Features
