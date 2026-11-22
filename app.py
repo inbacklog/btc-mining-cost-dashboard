@@ -1,21 +1,25 @@
 from __future__ import annotations
 
 import math
+import os
+import sys
+from io import StringIO
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List
+from urllib.parse import urljoin
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import requests
 import streamlit as st
-import yfinance as yf
 from plotly.subplots import make_subplots
-from streamlit_autorefresh import st_autorefresh
 
 
-BINANCE_BASE_URL = "https://api.binance.com"
+BROWSER = sys.platform == "emscripten"
+PAGES_ROOT = os.environ.get("DASHBOARD_PAGES_ROOT", "")
+BINANCE_BASE_URL = "https://data-api.binance.vision" if BROWSER else "https://api.binance.com"
 BLOCKCHAIN_CHARTS_URL = "https://api.blockchain.info/charts"
 COINMETRICS_API_URL = "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
 COINMETRICS_BTC_CSV_URL = "https://raw.githubusercontent.com/coinmetrics/data/master/csv/btc.csv"
@@ -151,10 +155,20 @@ HALVINGS = [
 
 
 def http_get_json(url: str, params: dict | None = None, timeout: int = 30):
-    headers = {"User-Agent": "btc-cost-dashboard/16.0"}
+    headers = {} if BROWSER else {"User-Agent": "btc-cost-dashboard/16.0"}
     response = requests.get(url, params=params, headers=headers, timeout=timeout)
     response.raise_for_status()
     return response.json()
+
+
+def read_pages_snapshot(name: str, days: int | None) -> pd.DataFrame:
+    response = requests.get(urljoin(PAGES_ROOT, "generated/" + name + ".csv"), timeout=30)
+    response.raise_for_status()
+    data = pd.read_csv(StringIO(response.text))
+    data["time"] = pd.to_datetime(data["time"], utc=True)
+    if days is not None:
+        data = data[data.time >= data.time.max() - pd.Timedelta(days=days)]
+    return data.reset_index(drop=True)
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -201,6 +215,10 @@ def fetch_binance_klines(symbol: str, interval: str, start_ms: int, end_ms: int,
 
 @st.cache_data(ttl=10 * 60, show_spinner=False)
 def fetch_yahoo_price(ticker: str, interval: str, days: int | None) -> pd.DataFrame:
+    if BROWSER:
+        return read_pages_snapshot(f"{ticker}-{interval}", days)
+    import yfinance as yf
+
     period = "max" if days is None else f"{max(days, 1)}d"
     data = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=False, threads=False)
     if data.empty:
@@ -390,6 +408,8 @@ def build_mining_cost_data(days: int | None) -> pd.DataFrame:
     history with HashRate in TH/s plus daily issuance and fees. Blockchain.com is
     retained only as a fallback.
     """
+    if BROWSER:
+        return read_pages_snapshot("mining", days)
     start_date = "2013-01-01" if days is None else (pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=max(days, 30))).strftime("%Y-%m-%d")
 
     # Primary: Coin Metrics Community API.
@@ -530,13 +550,17 @@ def render_support_box() -> None:
         st.caption("Optional support if this dashboard is useful to you.")
         st.markdown("**1. Buy Me a Coffee**")
         st.link_button("Buy Me a Coffee", BUY_ME_A_COFFEE_URL, use_container_width=True)
-        if BUY_ME_A_COFFEE_QR.exists():
+        if BROWSER:
+            st.image(urljoin(PAGES_ROOT, "assets/buymeacoffee-qr.png"), caption="Buy Me a Coffee QR", use_container_width=True)
+        elif BUY_ME_A_COFFEE_QR.exists():
             st.image(str(BUY_ME_A_COFFEE_QR), caption="Buy Me a Coffee QR", use_container_width=True)
 
         st.divider()
         st.markdown("**2. Bitcoin Lightning / Wallet of Satoshi**")
         st.code(LIGHTNING_ADDRESS)
-        if LIGHTNING_QR.exists():
+        if BROWSER:
+            st.image(urljoin(PAGES_ROOT, "assets/lightning-qr.png"), caption="Lightning QR", use_container_width=True)
+        elif LIGHTNING_QR.exists():
             st.image(str(LIGHTNING_QR), caption="Lightning QR", use_container_width=True)
 
 
@@ -1203,7 +1227,13 @@ def main():
         refresh_label = st.selectbox("Auto-refresh", list(REFRESH_OPTIONS.keys()), index=0)
         refresh_seconds = REFRESH_OPTIONS[refresh_label]
         if refresh_seconds:
-            st_autorefresh(interval=refresh_seconds * 1000, key="btc_cost_refresh")
+            if BROWSER:
+                from streamlit.components.v1 import declare_component
+                refresh = declare_component("pages_autorefresh", url=urljoin(PAGES_ROOT, "generated/autorefresh/index.html"))
+                refresh(interval=refresh_seconds * 1000, limit=None, debounce=True, key="btc_cost_refresh")
+            else:
+                from streamlit_autorefresh import st_autorefresh
+                st_autorefresh(interval=refresh_seconds * 1000, key="btc_cost_refresh")
 
         st.divider()
         st.header("Chart")
@@ -1232,6 +1262,9 @@ def main():
         target_cost = st.number_input("Current reference total production cost", min_value=1000.0, max_value=300000.0, value=85000.0, step=1000.0)
         st.divider()
         render_support_box()
+        if BROWSER:
+            st.caption("GitHub Pages updates Yahoo candles and mining data daily. Binance candles come from the exchange.")
+            st.markdown(f"[Downloads and project information]({urljoin(PAGES_ROOT, 'project.html')})")
 
     # Price data
     try:
@@ -1287,6 +1320,10 @@ def main():
     # Latest metrics use the full loaded data. Chart y-axis autoscaling is handled separately
     # by filtering the visible date range before each figure is created.
     display_end = price["time"].max()
+    if BROWSER:
+        mining_date = f"{mining_raw.time.max():%Y-%m-%d}" if not mining_raw.empty else "unavailable"
+        st.caption(f"Last price candle: {display_end:%Y-%m-%d %H:%M} UTC · Mining data through {mining_date} · "
+                   "[Coin Metrics Community Data](https://github.com/coinmetrics/data) (CC BY-NC 4.0)")
 
     latest_price = latest_value(price, "close")
     latest_total_cost = latest_value(cost, "total_production_cost_per_btc") if not cost.empty else None

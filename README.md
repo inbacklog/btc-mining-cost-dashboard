@@ -2,9 +2,9 @@
 
 A Streamlit dashboard for comparing BTC market price with an estimated mining production-cost model. It combines price history, moving averages, RSI, volume, network mining metrics, cost assumptions, and a historical accumulation-opportunity score.
 
-**[Open the interactive dashboard](https://inbacklog.github.io/btc-mining-cost-dashboard/)** to explore daily BTC prices, mining cost assumptions, and indicators in a browser. The date above the chart shows the latest available observation. [Downloads and project details](https://inbacklog.github.io/btc-mining-cost-dashboard/project.html) are also available.
+**[Open the dashboard](https://inbacklog.github.io/btc-mining-cost-dashboard/)**. The browser runs the same Streamlit entry point, sidebar, calculations, charts and manual as the Windows application using [Stlite](https://github.com/whitphx/stlite). The first visit downloads Python and the chart libraries. [Downloads and project details](https://inbacklog.github.io/btc-mining-cost-dashboard/project.html).
 
-GitHub Actions builds the Pages dashboard every day at 08:37 UTC using [Coin Metrics Community Data](https://github.com/coinmetrics/data) (CC BY-NC 4.0). A failed refresh leaves the last successful site available. To preview the browser edition locally, install the Python requirements, run `python build_pages.py`, then run `python -m http.server 8000 --directory docs` and open `http://localhost:8000/`.
+GitHub Actions publishes Yahoo Finance OHLCV snapshots (USD and EUR, daily, weekly and monthly) and mining metrics daily at 08:37 UTC. Binance mode requests spot candles directly from its public market-data endpoint, subject to exchange availability. Mining data includes [Coin Metrics Community Data](https://github.com/coinmetrics/data) (CC BY-NC 4.0). A failed refresh leaves the last successful site available. For a local preview, install the Python requirements, run `python build_pages.py`, then `python -m http.server 8000 --directory docs` and open `http://localhost:8000/`.
 
 This project is intended for research and education. It is not financial advice.
 

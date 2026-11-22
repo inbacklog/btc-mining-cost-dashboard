@@ -1,70 +1,117 @@
-"""Prepare daily data and the local Plotly runtime for the GitHub Pages artifact."""
+"""Bundle the desktop entry point and its browser-readable data for Pages."""
+import base64
+import hashlib
+import io
+import importlib.util
+import json
+import shutil
+import tarfile
+import time
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 import requests
-from plotly.offline import get_plotlyjs
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
-from app import (
-    COINMETRICS_API_URL, add_200w_ma, add_indicators, apply_cost_assumptions,
-    build_opportunity_data, coinmetrics_to_cost_raw,
-)
-
-OUTPUT = Path(__file__).resolve().parent / "docs" / "generated"
-METRICS = ["PriceUSD", "HashRate", "FeeTotNtv", "IssTotNtv", "volume_reported_spot_usd_1d"]
+from app import build_mining_cost_data, fetch_yahoo_price
 
 
-def fetch_daily():
+ROOT = Path(__file__).resolve().parent
+OUTPUT = ROOT / "docs" / "generated"
+STLITE = "0.85.1"
+STLITE_SHA512 = "6eMGS0ErYLnUm4XiSKgbC+leY/zfg07pHgK+ltE8wmbz5+dYEJ69+bwIR4hCKkuV68l+y3KHkCtEQwKXmdTRHw=="
+PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.27.6/full/"
+
+
+def download(url):
+    response = requests.get(url, timeout=(15, 100))
+    response.raise_for_status()
+    return response.content
+
+
+def bundle_python():
+    directory = OUTPUT / "python"
+    directory.mkdir(exist_ok=True)
+    lockfile = download(PYODIDE + "pyodide-lock.json")
+    packages = json.loads(lockfile)["packages"]
+    files = dict.fromkeys(["pyodide.mjs", "pyodide.asm.js", "pyodide.asm.wasm", "python_stdlib.zip"])
+
+    def include(package):
+        spec = packages[package.replace("_", "-")]
+        if spec["file_name"] in files:
+            return
+        files[spec["file_name"]] = spec["sha256"]
+        for dependency in spec["depends"]:
+            include(dependency)
+
+    for package in ["micropip", "pandas", "requests", "pyodide-http", "fastparquet",
+                    "protobuf", "typing-extensions", "altair", "pillow", "cachetools"]:
+        include(package)
+
+    def save(item):
+        filename, checksum = item
+        content = download(PYODIDE + filename)
+        if checksum and hashlib.sha256(content).hexdigest() != checksum:
+            raise ValueError(f"Checksum mismatch for {filename}")
+        (directory / filename).write_bytes(content)
+
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        list(pool.map(save, files.items()))
+    (directory / "pyodide-lock.json").write_bytes(lockfile)
+
+
+def bundle_runtime():
+    archive = download(f"https://registry.npmjs.org/@stlite/browser/-/browser-{STLITE}.tgz")
+    if hashlib.sha512(archive).digest() != base64.b64decode(STLITE_SHA512):
+        raise ValueError("Browser runtime checksum mismatch")
+    runtime = OUTPUT / "runtime"
+    with tarfile.open(fileobj=io.BytesIO(archive), mode="r:gz") as package:
+        for member in package:
+            path = Path(member.name)
+            if not member.isfile() or path.parts[:2] != ("package", "build") or path.suffix == ".map":
+                continue
+            target = runtime.joinpath(*path.parts[2:]).resolve()
+            target.relative_to(runtime)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(package.extractfile(member).read())
+
+    wheels = []
+    for name, version in [("blinker", "1.9.0"), ("tenacity", "9.2.1"), ("plotly", "5.24.1")]:
+        metadata = json.loads(download(f"https://pypi.org/pypi/{name}/{version}/json"))
+        dist = next(d for d in metadata["urls"] if d["filename"].endswith("none-any.whl"))
+        wheel = download(dist["url"])
+        if hashlib.sha256(wheel).hexdigest() != dist["digests"]["sha256"]:
+            raise ValueError(f"{name} wheel checksum mismatch")
+        (OUTPUT / dist["filename"]).write_bytes(wheel)
+        wheels.append(dist["filename"])
+    (OUTPUT / "wheels.json").write_text(json.dumps(wheels), encoding="utf-8")
+    component = Path(importlib.util.find_spec("streamlit_autorefresh").origin).parent
+    shutil.copytree(component / "frontend" / "build", OUTPUT / "autorefresh", dirs_exist_ok=True)
+
+
+def write_snapshots():
     today = pd.Timestamp.now(tz="UTC").normalize()
-    params = dict(assets="btc", metrics=",".join(METRICS), frequency="1d",
-                  start_time="2013-01-01", end_time=(today - pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
-                  page_size=10000)
-    records = []
-    with requests.Session() as session:
-        session.mount("https://", HTTPAdapter(max_retries=Retry(
-            total=3, backoff_factor=1, status_forcelist=(429, 500, 502, 503, 504))))
-        while True:
-            response = session.get(COINMETRICS_API_URL, params=params, timeout=(15, 75))
-            response.raise_for_status()
-            page = response.json()
-            records.extend(page["data"])
-            if not page.get("next_page_token"):
-                break
-            params["next_page_token"] = page["next_page_token"]
-    df = pd.DataFrame(records)
-    df["time"] = pd.to_datetime(df["time"], utc=True)
-    df[METRICS] = df[METRICS].apply(pd.to_numeric, errors="coerce")
-    complete = (df[["PriceUSD", "HashRate", "IssTotNtv"]] > 0).all(axis=1) & (df["FeeTotNtv"] >= 0)
-    df = df.loc[complete].sort_values("time").drop_duplicates("time").reset_index(drop=True)
-    if len(df) < 3650 or today - df.time.iloc[-1] > pd.Timedelta(days=7):
-        raise ValueError("Incomplete or stale source history. Keeping the previous Pages deployment.")
-    return df
-
-
-def snapshot(df):
-    price = df.rename(columns={"PriceUSD": "close", "volume_reported_spot_usd_1d": "volume"})
-    price = add_200w_ma(add_indicators(price, [20, 50, 200]))
-    cost = apply_cost_assumptions(coinmetrics_to_cost_raw(df), price, "USD", "Historical",
-                                  20, .05, 1.10, 60, True, False, 85000)
-    # The score is linear in its clipped cost component. Export its endpoints
-    # so the browser can change assumptions using the desktop weighting.
-    frame = price[["time", "close", "volume", "MA20", "MA50", "MA200", "MA200W",
-                   "RSI14", "BB_lower", "BB_upper"]].copy()
-    frame = frame.merge(cost[["time", "total_production_cost_per_btc", "efficiency_j_per_th",
-                              "fees_btc", "btc_issued_per_day", "hashrate_th_s"]], on="time", validate="one_to_one")
-    for name, ratio in [("scoreLow", 1.50), ("scoreHigh", .70)]:
-        score = build_opportunity_data(price, cost.assign(price_to_total_cost=ratio))
-        frame[name] = frame.time.map(score.set_index("time").opportunity_score)
-    frame["time"] = frame.time.dt.strftime("%Y-%m-%d")
-    return frame.to_json(orient="split", index=False, double_precision=7)
+    for ticker in ["BTC-USD", "BTC-EUR"]:
+        for interval, max_age in [("1d", 4), ("1wk", 10), ("1mo", 35)]:
+            for attempt in range(3):
+                prices = fetch_yahoo_price(ticker, interval, None)
+                if len(prices) >= 100 and today - prices.time.max() < pd.Timedelta(days=max_age):
+                    break
+                fetch_yahoo_price.clear()
+                time.sleep(2 ** attempt)
+            else:
+                raise ValueError(f"Incomplete Yahoo snapshot for {ticker} {interval}")
+            prices.to_csv(OUTPUT / f"{ticker}-{interval}.csv", index=False)
+    mining = build_mining_cost_data(None)
+    if len(mining) < 3650 or today - mining.time.max() > pd.Timedelta(days=7):
+        raise ValueError("Incomplete mining history")
+    mining.to_csv(OUTPUT / "mining.csv", index=False)
+    print(f"Mining observations through {mining.time.max():%Y-%m-%d}")
 
 
 if __name__ == "__main__":
-    daily = fetch_daily()
-    payload = snapshot(daily)
-    OUTPUT.mkdir(exist_ok=True)
-    (OUTPUT / "daily.json").write_text(payload, encoding="utf-8")
-    (OUTPUT / "plotly.min.js").write_text(get_plotlyjs(), encoding="utf-8")
-    print(f"Built {len(daily)} daily observations through {daily.time.iloc[-1]:%Y-%m-%d}")
+    OUTPUT.mkdir(parents=True, exist_ok=True)
+    bundle_runtime()
+    bundle_python()
+    write_snapshots()
+    shutil.copyfile(ROOT / "app.py", OUTPUT / "app.py")

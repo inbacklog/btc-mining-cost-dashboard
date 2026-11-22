@@ -3,62 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#101719">
-  <meta name="description" content="Explore Bitcoin's daily market price and estimated mining costs. Adjust the model and inspect historical trends in your browser.">
+  <title>BTC price vs mining cost</title>
+  <meta name="description" content="The BTC Mining Cost Dashboard. Explore BTC candles, mining costs, RSI, volume and historical opportunity scores in Streamlit.">
   <meta property="og:image" content="https://inbacklog.github.io/btc-mining-cost-dashboard/assets/dashboard-overview.png">
-  <title>BTC Mining Cost Dashboard</title>
-  <link rel="stylesheet" href="terminal.css">
-  <script defer src="generated/plotly.min.js"></script>
-  <script defer src="dashboard.js"></script>
+  <link rel="stylesheet" href="generated/runtime/stlite.css">
+  <style>
+    html, body, #root {margin:0; height:100%; background:#0e1117; color:#fafafa}
+    #startup {margin:3rem auto; max-width:44rem; padding:1rem; font:1rem/1.6 system-ui,sans-serif}
+    #startup a {color:#80ceff}
+  </style>
 </head>
 <body>
-  <header><div class="wrap mast"><strong><span class="coin" aria-hidden="true">&#8383;</span> Bitcoin research</strong>
-    <nav aria-label="Project links"><a href="project.html#run">Downloads</a><a href="project.html">About</a></nav>
-  </div></header>
-  <main class="wrap">
+  <div id="root"><div id="startup" role="status">
     <h1>BTC Mining Cost Dashboard</h1>
-    <p id="asof" role="status">Loading daily market and network data&hellip;</p>
-    <noscript>Enable JavaScript to explore the charts, or <a href="project.html#run">run the local dashboard</a>.</noscript>
-    <section id="workspace" hidden aria-label="Market and mining data">
-      <dl class="readings">
-        <div><dt>BTC market price</dt><dd id="market"></dd></div>
-        <div><dt>Production cost / BTC</dt><dd id="production"></dd></div>
-        <div><dt>Price / cost</dt><dd id="multiple"></dd></div>
-        <div><dt>Opportunity score</dt><dd id="opportunity"></dd></div>
-      </dl>
-      <div class="chart-head">
-        <label>Chart<select id="view">
-          <option value="cost">Price and mining cost</option><option value="trend">Price and moving averages</option>
-          <option value="ratio">Price / production cost</option><option value="score">Opportunity score</option>
-          <option value="rsi">Relative strength index</option><option value="volume">Spot trading volume</option>
-          <option value="hash">Network hash rate</option>
-        </select></label>
-        <div class="period" role="group" aria-label="Date window">
-          <button type="button" data-days="90">90D</button><button type="button" data-days="365" aria-pressed="true">1Y</button>
-          <button type="button" data-days="1461">4Y</button><button type="button" data-days="0">All</button>
-        </div>
-        <label class="check"><input type="checkbox" id="log"> Log scale</label>
-      </div>
-      <div id="chart" role="region" aria-label="Interactive historical chart"></div>
-      <div class="chart-foot"><span id="period-label"></span><a href="generated/daily.json" download>Download daily data</a></div>
-      <details open><summary>Mining cost assumptions</summary>
-        <form id="model">
-          <label>Electricity (USD/kWh)<input id="rate" type="number" min=".001" max="1" step="any" value="0.05" required></label>
-          <label>Facility overhead (PUE)<input id="pue" type="number" min="1" max="3" step="any" value="1.10" required></label>
-          <label>Electricity share (%)<input id="share" type="number" min="20" max="100" step="any" value="60" required></label>
-          <label>Fleet efficiency<select id="mode"><option value="history">Historical estimate</option><option value="constant">Constant J/TH</option></select></label>
-          <label id="eff-label" hidden>Efficiency (J/TH)<input id="eff" type="number" min="1" max="2000" step="any" value="20" required disabled></label>
-          <label class="check"><input id="fees" type="checkbox" checked> Include transaction fees</label>
-          <div class="actions"><button id="apply" type="submit">Apply model</button><button type="reset">Reset</button></div>
-        </form>
-      </details>
-      <details><summary>Data and methodology</summary>
-        <p>The market series is Coin Metrics' daily BTC price in USD. Electricity cost uses network hash rate, fleet efficiency, facility overhead and electricity price, divided by daily BTC issuance plus optional fees. Total cost divides that result by electricity's share of costs.</p>
-        <p>The opportunity score combines price relative to modeled cost, drawdown, the 200-week moving average, RSI and halving timing. Higher scores indicate that more of those historical conditions coincide. Estimates depend on the assumptions you choose.</p>
-        <p><a href="https://github.com/coinmetrics/data">Coin Metrics Community Data</a> &middot; <a href="https://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0</a>. Daily observations are filtered and used to calculate model estimates and indicators. The local app also supports exchange feeds and intraday candles.</p>
-      </details>
-    </section>
-  </main>
-  <footer class="wrap"><span>Research and education only.</span><a href="project.html#support">Support this project</a><a href="https://github.com/inbacklog/btc-mining-cost-dashboard">GitHub</a></footer>
+    <p id="message">Loading Streamlit and the dashboard. The first visit downloads the Python runtime.</p>
+    <a href="project.html">Downloads and project information</a>
+    <noscript><p>Enable JavaScript to run the dashboard in your browser.</p></noscript>
+  </div></div>
+  <script type="module" src="start.js"></script>
 </body>
 </html>
