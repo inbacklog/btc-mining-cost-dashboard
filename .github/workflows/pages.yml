@@ -5,7 +5,12 @@ on:
     branches: [main]
     paths:
       - "docs/**"
+      - "app.py"
+      - "build_pages.py"
+      - "requirements.txt"
       - ".github/workflows/pages.yml"
+  schedule:
+    - cron: "37 8 * * *"
   workflow_dispatch:
 
 permissions:
@@ -29,6 +34,16 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Build daily dashboard
+        run: |
+          python -m pip install -r requirements.txt "pandas<3" "plotly>=6,<7" "streamlit<2"
+          python build_pages.py
 
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3

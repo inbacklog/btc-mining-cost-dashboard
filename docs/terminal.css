@@ -1,0 +1,52 @@
+:root {color-scheme:dark; --base:#101719; --panel:#182225; --text:#f2f6f5; --muted:#afbfbe; --line:#354548; --gold:#ffc16c; --aqua:#60d5ca}
+* {box-sizing:border-box}
+body {margin:0; background:var(--base); color:var(--text); font:16px/1.5 Inter,"Segoe UI",sans-serif}
+[hidden] {display:none!important}
+.wrap {width:min(1180px,94%); margin-inline:auto}
+header {background:#141e20; border-bottom:1px solid var(--line)}
+.mast,.mast strong,nav,.chart-head,.chart-foot,footer,.actions,.period {display:flex; align-items:center; gap:1rem; flex-wrap:wrap}
+.mast {justify-content:space-between; min-height:3.5rem; padding:.5rem 0}
+.mast strong {gap:.6rem}
+.coin {border-radius:50%; background:var(--gold); color:var(--base); text-align:center; width:1.8rem; line-height:1.8rem}
+a {color:var(--aqua); text-underline-offset:3px}
+nav a,footer a,.chart-foot a {font-size:.88rem}
+h1 {font-size:2.25rem; line-height:1.15; margin:2rem 0 .4rem}
+#asof,.chart-foot,footer,details p {color:var(--muted)}
+#asof {margin:0 0 1.5rem}
+.readings {display:grid; grid-template-columns:repeat(4,1fr); margin:0; border-block:1px solid var(--line)}
+.readings div {padding:1rem 0; min-width:0}
+dt,label,.chart-foot {font-size:.86rem}
+dt {color:var(--muted)}
+dd {margin:.1rem 0 0; font-size:1.8rem; font-weight:600; font-variant-numeric:tabular-nums}
+#market {color:var(--gold)} #production {color:var(--aqua)}
+.chart-head {margin:1.3rem 0 .7rem; align-items:end}
+label {display:grid; gap:.3rem; color:var(--muted)}
+.check {display:flex; align-items:center; gap:.45rem; min-height:40px}
+input,button,select {font:inherit; color:var(--text); border:1px solid var(--line); border-radius:4px; background:var(--panel); padding:.5rem .7rem; min-height:40px}
+input[type="checkbox"] {min-height:0; width:16px; height:16px; accent-color:var(--aqua)}
+button,select {cursor:pointer}
+button:hover,a:hover {color:white}
+:focus-visible {outline:2px solid var(--aqua); outline-offset:3px}
+.period {gap:2px; margin-left:auto; font-size:.84rem}
+.period button {min-width:45px}
+button[aria-pressed="true"],#apply {background:var(--aqua); color:#092422; border-color:var(--aqua); font-weight:650}
+#chart {height:430px; width:100%; background:var(--panel)}
+.chart-foot {justify-content:space-between; padding:.6rem 0 1.2rem}
+details {border-top:1px solid var(--line); padding:.8rem 0}
+summary {cursor:pointer; font-weight:600; width:fit-content}
+form {margin-top:.8rem; display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:.85rem; align-items:end}
+form input,form select {width:100%}
+.actions {gap:.4rem; flex-wrap:nowrap}
+details p {max-width:75ch}
+footer {border-top:1px solid var(--line); padding:1rem 0; margin-top:1.5rem; font-size:.85rem}
+footer span {margin-right:auto}
+@media(max-width:650px) {
+  h1 {font-size:1.75rem; margin-top:1.4rem}
+  .readings {grid-template-columns:1fr 1fr}
+  .readings div {padding:.55rem 0}
+  dd {font-size:1.5rem}
+  .chart-head {gap:.5rem}
+  .chart-head>label:first-child {width:100%}
+  .period {margin:0 auto 0 0}
+  #chart {height:370px}
+}

@@ -2,7 +2,9 @@
 
 A Streamlit dashboard for comparing BTC market price with an estimated mining production-cost model. It combines price history, moving averages, RSI, volume, network mining metrics, cost assumptions, and a historical accumulation-opportunity score.
 
-**Project website:** [inbacklog.github.io/btc-mining-cost-dashboard](https://inbacklog.github.io/btc-mining-cost-dashboard/)
+**[Open the interactive dashboard](https://inbacklog.github.io/btc-mining-cost-dashboard/)** to explore daily BTC prices, mining cost assumptions, and indicators in a browser. The date above the chart shows the latest available observation. [Downloads and project details](https://inbacklog.github.io/btc-mining-cost-dashboard/project.html) are also available.
+
+GitHub Actions builds the Pages dashboard every day at 08:37 UTC using [Coin Metrics Community Data](https://github.com/coinmetrics/data) (CC BY-NC 4.0). A failed refresh leaves the last successful site available. To preview the browser edition locally, install the Python requirements, run `python build_pages.py`, then run `python -m http.server 8000 --directory docs` and open `http://localhost:8000/`.
 
 This project is intended for research and education. It is not financial advice.
 
